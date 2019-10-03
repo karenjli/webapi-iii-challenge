@@ -1,9 +1,10 @@
 const express = require("express");
 const userDb = require("./userDb");
+const postDb = require("../posts/postDb");
 
 const router = express.Router();
 
-router.post("/", (req, res) => {
+router.post("/", validateUser, (req, res) => {
   const body = req.body;
   if (!body.name) {
     res.status(400).json({ message: "Name is required" });
@@ -21,7 +22,21 @@ router.post("/", (req, res) => {
   }
 });
 
-router.post("/:id/posts", (req, res) => {});
+router.post("/:id/posts", validatePost, (req, res) => {
+  const newPost = req.body;
+  if (newPost.user_id === 0 || newPost.text === 0) {
+    res.status(404).json({ message: "Missing required text field" });
+  } else {
+    postDb
+      .insert(newPost)
+      .then(post => {
+        res.status(201).json(post);
+      })
+      .catch(error => {
+        res.status(500).json({ errorMessage: "Error with posting text" });
+      });
+  }
+});
 
 router.get("/", (req, res) => {
   userDb
@@ -36,7 +51,7 @@ router.get("/", (req, res) => {
     });
 });
 
-router.get("/:id", (req, res) => {
+router.get("/:id", validateUserId, (req, res) => {
   const id = req.params.id;
   userDb
     .getById(id)
@@ -123,10 +138,50 @@ router.put("/:id", (req, res) => {
 
 //custom middleware
 
-function validateUserId(req, res, next) {}
+function validateUserId(req, res, next) {
+  const userId = req.params.id;
+  userDb
+    .getById(userId)
+    .then(user => {
+      if (!user) {
+        res.status(400).json({ message: "Invalid user id" });
+      } else {
+        next();
+      }
+    })
+    .catch(error => {
+      res
+        .status(500)
+        .json({ errorMessage: "Error with validate UserId middleware" });
+    });
+}
 
-function validateUser(req, res, next) {}
+function validateUser(req, res, next) {
+  const body = req.body;
+  if (!body) {
+    res.status(400).json({ message: "missing user data" });
+  } else {
+    userDb
+      .insert(body)
+      .then(user => {
+        if (user.name === 0) {
+          res.status(400).json({ message: "missing required name field" });
+        }
+      })
+      .catch(error => {
+        res.status(500).json({ errorMessage: "Error with validate User" });
+      });
+  }
+  next();
+}
 
-function validatePost(req, res, next) {}
+function validatePost(req, res, next) {
+  const body = req.body;
+  if (body === 0) {
+    res.status(400).json({ message: "missing post data" });
+  } else {
+    next();
+  }
+}
 
 module.exports = router;

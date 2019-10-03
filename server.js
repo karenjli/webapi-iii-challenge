@@ -1,5 +1,6 @@
-const express = "express";
-
+const express = require("express");
+const userRouter = require("./users/userRouter");
+const postRouter = require("./posts/postRouter");
 const server = express();
 
 server.get("/", (req, res) => {
@@ -14,5 +15,8 @@ function logger(req, res, next) {
 }
 
 server.use(logger);
+server.use(express.json());
+server.use("/user", userRouter);
+server.use("/post", postRouter);
 
 module.exports = server;
